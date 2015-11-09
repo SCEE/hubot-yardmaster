@@ -13,11 +13,11 @@
 #   MONITOR_JENKINS - true | false : If true, hubot will monitor the jenkins queue and start nodes when job queue is greater than 2.
 #
 # Commands:
-#   hubot switch|change|build {job} to|with {branch} - Change job to branch on Jenkins and build.
-#   hubot (show|current|show current) branch for {job} - Shows current branch for job on Jenkins.
-#   hubot (go) build yourself|(go) ship yourself - Rebuilds default branch if set.
+#   hubot build|rebuild {job} - [Re]builds job.
+#   hubot build|rebuild {job} with {param1,param2}  - [Re]builds job with a comma separated list of parameters.
+#   hubot build|rebuild {job1,job2,jobN} - [Re]builds a comma separated list of jobs.
+#   hubot build|rebuild {job1,job2,jobN} with {param1,param2}  - [Re]builds a comma separated list of jobs with a comma separated list of parameters.
 #   hubot list jobs|jenkins list|all jobs|jobs {job} - Shows all jobs in Jenkins. Filters by job if provided.
-#   hubot build|rebuild {job} - Rebuilds job.
 #   hubot show|show last|last (build|failure|output) for {job} - show output for last job
 #   hubot show|show output|output for {job} {number} - show output job output for number given
 #   hubot show|show output|output for {job} {number} - show output job output for number given.
@@ -398,6 +398,11 @@ module.exports = (robot) ->
   robot.respond /(list jobs|jenkins list|all jobs|jobs)\s*(.*)\.?/i, (msg) ->
     listJobs(robot, msg)
 
+  # Will match:
+  #   build JOB
+  #   build JOB with PARAMS1 PARAMSN
+  #   build JOB1,JOB2
+  #   build JOB1,JOB2 with PARAMS1 PARAMSN
   robot.respond /(build|rebuild)\s(([\w\.\-_][,\w\.\-_]+)\swith\s(.*)|([\w+\.\-_ ][,\w\.\-_ ]+)|([\w+\.\-_ ]))/i, (msg) ->
     buildJob(robot, msg)
 

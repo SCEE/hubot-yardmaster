@@ -1,6 +1,6 @@
 Hubot Yardmaster
 =============
-Yardmaster is a Hubot plugin that allows you to interact with Jenkins instance remotely. Build jobs, change branches, start builders, lock jobs... The list goes on.
+This is a fork of Yardmaster, a Hubot plugin that allows you to interact with Jenkins instance remotely. It removes quite a lot of functionality, and only really builds, watches, and lists jobs. 
 
 ### Environment Variables Required:
 * HUBOT_JENKINS_URL - Jenkins base URL
@@ -11,25 +11,18 @@ Yardmaster is a Hubot plugin that allows you to interact with Jenkins instance r
 * MONITOR_JENKINS - true | false : If true, hubot will monitor the jenkins queue and start nodes when job queue is greater than 2.
 
 ### Commands:
-* hubot switch|change|build {job} to|with {branch} - Change job to branch on Jenkins and build.
-* hubot (show|current|show current) branch for {job} - Shows current branch for job on Jenkins.
-* hubot (go) build yourself|(go) ship yourself - Rebuilds default branch if set.
 * hubot list jobs|jenkins list|all jobs|jobs {job} - Shows all jobs in Jenkins. Filters by job if provided.
-* hubot build|rebuild {job} - Rebuilds job.
-* hubot enable|disable {job} - Enable or disable job on jenkins.
+* hubot build|rebuild {job} - [Re]builds job.
+* hubot build|rebuild {job} with {param1,param2}  - [Re]builds job with a comma separated list of parameters.
+* hubot build|rebuild {job1,job2,jobN} - [Re]builds a comma separated list of jobs.
+* hubot build|rebuild {job1,job2,jobN} with {param1,param2}  - [Re]builds a comma separated list of jobs with a comma separated list of parameters.
 * hubot show|show last|last (build|failure|output) for {job} - show output for last job
 * hubot show|show output|output for {job} {number} - show output job output for number given
-* hubot set branch message to {message} - set custom message when switching branches on a job
-* hubot remove branch message - remove custom message. Uses default message.
 * hubot show|show last|last (build|failure|output) for {job} - show output for last job.
 * hubot show|show output|output for {job} {number} - show output job output for number given.
 * hubot {job} status - show current build status and percent compelete of job and its dependencies.
-* hubot set job repos - Pulls list of jobs and repos from jenkins and places in memory to validate branch names if github token provided.
-* hubot remove job repos - Will remove job repos from memory.
 * hubot watch job {job-url} - Will check job every minute and notify you on completion
 * hubot (show|show last|last) (build) (date|time) for {job} - shows the last build date and time for a job
-* hubot (start|build) (builder|slave|node) - starts one of the available slave nodes.
-* hubot send reinforcements - starts one of the available slave nodes.
  
 #### Author: 
-#### @riveramj
+#### @riveramj, with modifications by @jalev
