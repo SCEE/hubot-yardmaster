@@ -166,6 +166,7 @@ buildJob = (robot, msg) ->
   # Enable specification of multiple jobs via job1, job2, jobN...
   jobTemp = msg.match[3]
 
+  # If no params are specified, then the job info will live in index 2
   if not jobTemp
     job = msg.match[2].trim().split(",")
   else
