@@ -99,34 +99,33 @@ doesJobExist = (robot, msg, job, callback) ->
       else
         callback(true)
 
-
 jenkinsBuilder = (robot, msg, jobName ) ->
   params = msg.match['4']
   if params
-      #msg.send "I'm building #{jobName}"
-      post robot, "job/#{jobName}/buildWithParameters?#{params}", "", (err, res, body) ->
-        queueUrl = res.headers?["location"]
-        if err
-          msg.reply "Encountered an error on build. Error I got back was: #{err}"
-        else if res.statusCode is 201
-          msg.reply "#{jobName} has been added to the queue with the following parameters: \"#{params}\"."
-          watchQueue robot, queueUrl, msg, jobName
-        else
-          msg.reply "I got a request back from Jenkins, but it wasn't what I was hoping for. The request is below"
-          msg.reply "Response: #{res}"
-          msg.reply "Body: #{body}"
-    else
-      post robot, "job/#{jobName}/buildWithParameters?", "", (err, res, body) ->
-        queueUrl = res.headers?["location"]
-        if err
-          msg.reply "Encountered an error on build. Error I got back was: #{err}"
-        else if res.statusCode is 201
-          msg.reply "#{jobName} has been added to the queue."
-          watchQueue robot, queueUrl, msg, jobName
-        else
-          msg.reply "I got a request back from Jenkins, but it wasn't what I was hoping for. The request is below"
-          msg.reply "Response: #{res}"
-          msg.reply "Body: #{body}"
+    urlsafeParams = params.replace( /,/, "&").replace(/\s/, "")
+    post robot, "job/#{jobName}/buildWithParameters?#{urlsafeParams}", "", (err, res, body) ->
+      queueUrl = res.headers?["location"]
+      if err
+        msg.reply "Encountered an error on build. Error I got back was: #{err}"
+      else if res.statusCode is 201
+        msg.reply "#{jobName} has been added to the queue with the following parameters: \"#{params}\"."
+        watchQueue robot, queueUrl, msg, jobName
+      else
+        msg.reply "I got a request back from Jenkins, but it wasn't what I was hoping for. The request is below"
+        msg.reply "Response: #{res}"
+        msg.reply "Body: #{body}"
+  else
+    post robot, "job/#{jobName}/buildWithParameters?", "", (err, res, body) ->
+      queueUrl = res.headers?["location"]
+      if err
+        msg.reply "Encountered an error on build. Error I got back was: #{err}"
+      else if res.statusCode is 201
+        msg.reply "#{jobName} has been added to the queue."
+        watchQueue robot, queueUrl, msg, jobName
+      else
+        msg.reply "I got a request back from Jenkins, but it wasn't what I was hoping for. The request is below"
+        msg.reply "Response: #{res}"
+        msg.reply "Body: #{body}"
 
 buildBranch = (robot, msg, job, branch = "") ->
   params = msg.match['4']
@@ -134,12 +133,11 @@ buildBranch = (robot, msg, job, branch = "") ->
   if typeIsArray job
     for jobName in job
       do (jobName) ->
-        console.log(jobName)
+        console.log("I am going to be building: #{jobName}")
         jenkinsBuilder(robot, msg, jobName)
   else
-    console.log(job)
+    console.log("I am going to be building: #{job}")
     jenkinsBuilder(robot, msg, job)
-
 
 typeIsArray = Array.isArray || ( value ) -> return {}.toString.call( value ) is '[object Array]'
 
@@ -173,8 +171,6 @@ buildJob = (robot, msg) ->
   else
     job = jobTemp.trim().split(",")
       
-  console.log("I got a request. It says: #{job}")
-
   # Flatten into a single value since we don't want to do any array parsing later.
   if job.length == 1
     job = job[0]
@@ -288,8 +284,9 @@ trackJobs = (robot, msg, jobs, jobStatus, callback) ->
 
         jobStatus.push { name: job }
 
-registerNewWatchedJob = (robot, id, user, url, queue, msg) ->
+registerNewWatchedJob = (robot, id, user, url, queue, msg, jobName = "") ->
   job = new WatchJob(id, user)
+  jobName = jobName
   if queue
     job.startQueue robot, url, msg
   else
@@ -305,7 +302,7 @@ unregisterWatchedJob = (robot, id)->
     delete JOBS[id]
     robot.brain.set 'yardmaster', yardmaster
 
-createCronWatchJob = (robot, url, msg, queue = false, jobName="") -> 
+createCronWatchJob = (robot, url, msg, queue = false, jobName = "" ) -> 
   id = Math.floor(Math.random() * 1000000) while !id? || JOBS[id]
 
   user = msg.message.user
@@ -315,10 +312,12 @@ createCronWatchJob = (robot, url, msg, queue = false, jobName="") ->
   yardmaster.watchJobs[id] = { jobUrl: url, user: user }
   robot.brain.set 'yardmaster', yardmaster
   
-  registerNewWatchedJob robot, id, user, url, queue, msg
+  registerNewWatchedJob robot, id, user, url, queue, msg, jobName
   
   if !queue
-    msg.reply "job #{jobName} is now building at #{url}"
+    jobName=jobName
+    console.log("The job name is: #{jobName}")
+    msg.reply "A job is now building at #{url}"
 
 trimUrl = (url) ->
   urlCorrect = /[0-9]/.test(url.slice (url.length - 1))
@@ -335,7 +334,7 @@ findJobNumber = (url, originalURL) ->
     findJobNumber url.slice(0, -1), originalURL
 
 
-watchQueue = (robot, url, msg) ->
+watchQueue = (robot, url, msg, jobName="") ->
   trimmedURL = url.slice(0, url.length - 1)
 
   jobNumber = findJobNumber trimmedURL, trimmedURL
@@ -346,7 +345,7 @@ watchQueue = (robot, url, msg) ->
     if res.statusCode is 404
       msg.send "#{url} does not seem to be a valid url. Couldn't watch job."
     else
-      createCronWatchJob robot, queueUrl, msg, true
+      createCronWatchJob robot, queueUrl, msg, true, jobName
 
 watchJob = (robot, msg) ->
   jobUrl = trimUrl msg.match[1].trim()
@@ -400,7 +399,6 @@ module.exports = (robot) ->
     listJobs(robot, msg)
 
   robot.respond /(build|rebuild)\s(([\w\.\-_][,\w\.\-_]+)\swith\s(.*)|([\w+\.\-_ ][,\w\.\-_ ]+)|([\w+\.\-_ ]))/i, (msg) ->
-    console.log("Hit multijob with params switch")
     buildJob(robot, msg)
 
   robot.respond /(show|show last|last) (build|failure|output) for (.+)\.?/i, (msg) ->
@@ -447,7 +445,7 @@ class WatchJob
 
         if result?
           unregisterWatchedJob robot, job.id
-          msg.reply "Hi there! job #{url} has finished with status: #{result}."
+          msg.reply "Hi there! job #{url} has finished with status: #{result}. You can view the results by [clicking on this link](#{url}testReport/)."
 
   checkQueueStatus: (url, robot, job, msg) ->
     getByFullUrl robot, url, (res, body) ->
