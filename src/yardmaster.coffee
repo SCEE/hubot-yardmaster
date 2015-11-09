@@ -99,6 +99,35 @@ doesJobExist = (robot, msg, job, callback) ->
       else
         callback(true)
 
+
+jenkinsBuilder = (robot, msg, jobName ) ->
+  params = msg.match['4']
+  if params
+      #msg.send "I'm building #{jobName}"
+      post robot, "job/#{jobName}/buildWithParameters?#{params}", "", (err, res, body) ->
+        queueUrl = res.headers?["location"]
+        if err
+          msg.reply "Encountered an error on build. Error I got back was: #{err}"
+        else if res.statusCode is 201
+          msg.reply "#{jobName} has been added to the queue with the following parameters: \"#{params}\"."
+          watchQueue robot, queueUrl, msg, jobName
+        else
+          msg.reply "I got a request back from Jenkins, but it wasn't what I was hoping for. The request is below"
+          msg.reply "Response: #{res}"
+          msg.reply "Body: #{body}"
+    else
+      post robot, "job/#{jobName}/buildWithParameters?", "", (err, res, body) ->
+        queueUrl = res.headers?["location"]
+        if err
+          msg.reply "Encountered an error on build. Error I got back was: #{err}"
+        else if res.statusCode is 201
+          msg.reply "#{jobName} has been added to the queue."
+          watchQueue robot, queueUrl, msg, jobName
+        else
+          msg.reply "I got a request back from Jenkins, but it wasn't what I was hoping for. The request is below"
+          msg.reply "Response: #{res}"
+          msg.reply "Body: #{body}"
+
 buildBranch = (robot, msg, job, branch = "") ->
   params = msg.match['4']
 
@@ -106,43 +135,10 @@ buildBranch = (robot, msg, job, branch = "") ->
     for jobName in job
       do (jobName) ->
         console.log(jobName)
-        if params
-          #msg.send "I'm building #{jobName}"
-          post robot, "job/#{jobName}/buildWithParameters?#{params}", "", (err, res, body) ->
-            queueUrl = res.headers?["location"]
-            if err
-              msg.reply "Encountered an error on build. Error I got back was: #{err}"
-            else if res.statusCode is 201
-              msg.reply "#{jobName} has been added to the queue with the following parameters: \"#{params}\"."
-              watchQueue robot, queueUrl, msg, jobName
-        else
-          msg.send "I'm building #{jobName}"
-          post robot, "job/#{jobName}/buildWithParameters?#{params}", "", (err, res, body) ->
-            queueUrl = res.headers?["location"]
-            if err
-              msg.reply "Encountered an error on build. Error I got back was: #{err}"
-            else if res.statusCode is 201
-              msg.reply "#{jobName} hsa been added to the queue."
-              watchQueue robot, queueUrl, msg, jobName
-
+        jenkinsBuilder(robot, msg, jobName)
   else
     console.log(job)
-    if params
-      post robot, "job/#{job}/buildWithParameters?", "", (err, res, body) ->
-        queueUrl = res.headers?["location"]
-        if err
-          msg.reply "Encountered an error on build. Error I got back was: #{err}"
-        else if res.statusCode is 201
-          msg.reply "#{job} has been added to the queue."
-          watchQueue robot, queueUrl, msg, job
-    else
-      post robot, "job/#{job}/build/", "", (err, res, body) ->
-        queueUrl = res.headers?["location"]
-        if err
-          msg.reply "Encountered an error on build. Error I got back was: #{err}"
-        else if res.statusCode is 201
-          msg.reply "#{job} has been added to the queue."
-          watchQueue robot, queueUrl, msg, job
+    jenkinsBuilder(robot, msg, job)
 
 
 typeIsArray = Array.isArray || ( value ) -> return {}.toString.call( value ) is '[object Array]'
