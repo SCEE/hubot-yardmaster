@@ -3,7 +3,6 @@ chai = require('chai')
 
 nock = require 'nock'
 
-chai.Assertion.includeStack = true
 chai.config.truncateThreshold = 0
 
 expect = chai.expect
@@ -37,7 +36,6 @@ describe 'yardmaster', ->
            "url" : "http://jenkins.internal.website.com/job/Test3",
            "color": "red"
          }
-
        ]
      }
 
