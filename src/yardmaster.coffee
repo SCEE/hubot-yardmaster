@@ -7,7 +7,7 @@
 # Configuration:
 #   HUBOT_JENKINS_URL - Jenkins base URL
 #   HUBOT_JENKINS_USER - Jenins admin user
-#   HUBOT_JENKINS_USER_API_KEY - Admin user API key. Not your password. Find at "{HUBOT_JENKINS_URL}/{HUBOT_JENKINS_USER}/configure" 
+#   HUBOT_JENKINS_USER_API_KEY - Admin user API key. Not your password. Find at "{HUBOT_JENKINS_URL}/{HUBOT_JENKINS_USER}/configure"
 #   HUBOT_JENKINS_JOB_NAME - Hubot job name on Jenkins (optional)
 #   GITHUB_TOKEN - Github API Auth token (optional)
 #   MONITOR_JENKINS - true | false : If true, hubot will monitor the jenkins queue and start nodes when job queue is greater than 2.
@@ -24,8 +24,8 @@
 #   hubot {job} status - show current build status and percent compelete of job and its dependencies.
 #   hubot watch job {job-url} - Will check job every minute and notify you on completion
 #   hubot (show|show last|last) (build) (date|time) for {job} - shows the last build date and time for a job
-# 
-# Author: 
+#
+# Author:
 #   @riveramj
 #   @jalev
 
@@ -78,7 +78,7 @@ ifJobEnabled = (robot, msg, job, callback) ->
     else
       parseString body, (err, result) ->
         jobStatus = (result?.project?.disabled[0] == 'true')
-        
+
         if jobStatus
           msg.send "No can do. '#{job}' is disabled."
         else
@@ -100,7 +100,9 @@ doesJobExist = (robot, msg, job, callback) ->
         callback(true)
 
 jenkinsBuilder = (robot, msg, jobName ) ->
-  params = msg.match['4']
+  params = msg[3]
+  urlsafeParams = params.replace(/\s+/g, ",")
+
   if params
     urlsafeParams = params.replace( /,/, "&").replace(/\s/, "")
     post robot, "job/#{jobName}/buildWithParameters?#{urlsafeParams}", "", (err, res, body) ->
@@ -128,8 +130,6 @@ jenkinsBuilder = (robot, msg, jobName ) ->
         msg.reply "Body: #{body}"
 
 buildBranch = (robot, msg, job, branch = "") ->
-  params = msg.match['4']
-
   if typeIsArray job
     for jobName in job
       do (jobName) ->
@@ -163,19 +163,17 @@ getCurrentBranch = (body) ->
   branch
 
 buildJob = (robot, msg) ->
-  # Enable specification of multiple jobs via job1, job2, jobN...
-  jobTemp = msg.match[3]
+  # build or rebuild
+  command = msg[1]
 
-  # If no params are specified, then the job info will live in index 2
-  if not jobTemp
-    job = msg.match[2].trim().split(",")
-  else
-    job = jobTemp.trim().split(",")
-      
+  # split the jobs string into an array of job names
+  job = msg[2]
+  job = job.replace(/\s+/g, "").split(",")
+
   # Flatten into a single value since we don't want to do any array parsing later.
   if job.length == 1
     job = job[0]
-    
+
   # Ensure that a job exists by parsing the list of jobs
   get robot, msg, "api/json", (res, body) ->
     jenkinsJobs = JSON.parse(body)
@@ -197,7 +195,7 @@ buildJob = (robot, msg) ->
 
 listJobs = (robot, msg) ->
   jobFilter = new RegExp(msg.match[2].trim(),"i")
-  
+
   get robot, msg, "api/json", (res, body) ->
     response = ""
     jobs = JSON.parse(body).jobs
@@ -209,7 +207,7 @@ listJobs = (robot, msg) ->
           response += "#{job.name} is #{lastBuildState}: #{job.url}\n"
       else
         response += "#{job.name} is #{lastBuildState}: #{job.url}\n"
-      
+
     msg.send """
       Here are the jobs
       #{response}
@@ -240,7 +238,7 @@ showBuildOuput = (robot, msg) ->
 showSpecificBuildOutput = (robot, msg) ->
   job = msg.match[2].trim()
   jobNumber = msg.match[3].trim()
-  
+
   get robot, msg, "job/#{job}/#{jobNumber}/logText/progressiveText", (res, body) ->
     if res.statusCode is 404
       msg.send "Did not find output for job number '#{jobNumber}' for '#{job}."
@@ -248,7 +246,7 @@ showSpecificBuildOutput = (robot, msg) ->
       getJobTimeStamp robot, msg, "job/#{job}/#{lastJob}", (timeStamp) ->
       msg.send """
         #{jenkinsURL}/job/#{job}/#{jobNumber}/console
-        Output is: 
+        Output is:
         #{body}
       """
 isJobBuilding = (robot, msg, job, callback) ->
@@ -303,7 +301,7 @@ unregisterWatchedJob = (robot, id)->
     delete JOBS[id]
     robot.brain.set 'yardmaster', yardmaster
 
-createCronWatchJob = (robot, url, msg, queue = false, jobName = "" ) -> 
+createCronWatchJob = (robot, url, msg, queue = false, jobName = "" ) ->
   id = Math.floor(Math.random() * 1000000) while !id? || JOBS[id]
 
   user = msg.message.user
@@ -312,9 +310,9 @@ createCronWatchJob = (robot, url, msg, queue = false, jobName = "" ) ->
   yardmaster.watchJobs ||= {}
   yardmaster.watchJobs[id] = { jobUrl: url, user: user }
   robot.brain.set 'yardmaster', yardmaster
-  
+
   registerNewWatchedJob robot, id, user, url, queue, msg, jobName
-  
+
   if !queue
     jobName=jobName
     console.log("The job name is: #{jobName}")
@@ -404,17 +402,17 @@ module.exports = (robot) ->
   #   build JOB with PARAMS1 PARAMSN
   #   build JOB1,JOB2
   #   build JOB1,JOB2 with PARAMS1 PARAMSN
-  robot.respond /(build|rebuild)\s(([\w\.\-_][,\w\.\-_]+)\swith\s(.*)|([\w+\.\-_ ][,\w\.\-_ ]+)|([\w+\.\-_ ]))/i, (msg) ->
+  robot.respond /(build|rebuild)((?:[\s,]+[\w\.\-_]+)+?)(\s+with)((?:(?:[\s,]+)?[^\s,]+=[^\s,]+)*)/i, (msg) ->
     buildJob(robot, msg)
 
   robot.respond /(show|show last|last) (build|failure|output) for (.+)\.?/i, (msg) ->
     showBuildOuput(robot, msg)
-  
+
   robot.respond /(?:show|show last|last) (?:build\s)?(?:date|time) for (.+)\.?/i, (msg) ->
     job = msg.match[1].trim()
     getJobTimeStamp robot, msg, "job/#{job}/lastBuild", (timeAndDate) ->
         msg.send "#{job} last built on #{timeAndDate[0]} at #{timeAndDate[1]} utc"
-  
+
   robot.respond /(.+) status\.?/i, (msg) ->
     job = msg.match[1].trim()
     doesJobExist robot, msg, job, (exists) ->
